@@ -1,13 +1,5 @@
 {
     "version": "1.0.3",
     "url": "https://github.com/Sudo-3D/download-manager/releases/latest/download/Download_Manager.exe",
-    "description": "What's New in v1.0.3 🚀
-
-High-Quality Audio Downloading: Added support for extracting and downloading YouTube videos directly as high-quality MP3 audio files.
-
-Fixed YouTube Download Failures (HTTP 403 / Stalls): Implemented an automated background update engine for the core yt-dlp library to ensure smooth, uninterrupted YouTube downloads.
-
-Auto-Play / Open File Fix: Resolved an issue where downloaded audio or video files failed to launch or play automatically right after completion.
-
-Performance & Stability Enhancements: Smoother installation process and minor UI responsiveness improvements."
+    "description": "What's New in v1.0.3 🚀\n\nHigh-Quality Audio Downloading: Added support for extracting and downloading YouTube videos directly as high-quality MP3 audio files.\n\nFixed YouTube Download Failures (HTTP 403 / Stalls): Implemented an automated background update engine for the core yt-dlp library to ensure smooth, uninterrupted YouTube downloads.\n\nAuto-Play / Open File Fix: Resolved an issue where downloaded audio or video files failed to launch or play automatically right after completion.\n\nPerformance & Stability Enhancements: Smoother installation process and minor UI responsiveness improvements."
 }
