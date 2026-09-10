@@ -1,5 +1,5 @@
 {
-    "version": "1.0.3",
+    "version": "1.0.4",
     "url": "https://github.com/Sudo-3D/download-manager/releases/latest/download/Download_Manager.exe",
     "description": "What's New in v1.0.4 🚀\n\nUpgraded UI Framework: Migrated the application interface to PyQt6 for a smoother, modern, and highly responsive user experience.\n\nOptimized Performance & App Size: Streamlined internal dependencies and applied advanced compression to deliver a significantly smaller installer size.\n\nAutomated FFmpeg Integration: Seamlessly downloads and configures FFmpeg during installation for hassle-free media processing.\n\nStability & Bug Fixes: Fixed system tray behavior and resolved module dependency issues for rock-solid background performance."
 }
