@@ -1,0 +1,9 @@
+{
+  "name": "com.python.download.manager",
+  "description": "Python Auto-Speed Download Manager Bridge",
+  "path": "C:\\Users\\ahmed\\Desktop\\Download Manager\\Core\\launch.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://ehlmakpkikgbekcdaoonkflbidmfeaag/"
+  ]
+}

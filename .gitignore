@@ -1,0 +1,26 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# PyInstaller & Build outputs
+build/
+dist/
+*.spec
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE Configs
+.vscode/
+.idea/
+
+# UV Cache
+.uv/
+.python-version
+
+# Project Files
+ffmpeg/
+Download Manager.code-workspace
