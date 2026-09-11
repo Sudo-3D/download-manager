@@ -53,8 +53,3 @@ If you install or move the application to a partition other than `C:\` (such as 
 
 
 This project is completely Open Source, and contributions are welcome! If you would like to add features or fix issues.
-
-<ElicitationsGroup message="Would you like to add badges or extra sections to your README?">
-  <Elicitation label="Add technical shields/badges (Python, PyQt, License)" query="How do I add SVG shields/badges for Python, License, and GitHub release at the top of the English README?"/>
-  <Elicitation label="Add a Quick Start guide for building from source using uv" query="How do I add a developer setup section in English explaining how to clone, set up uv, and build with PyInstaller?"/>
-</ElicitationsGroup>
