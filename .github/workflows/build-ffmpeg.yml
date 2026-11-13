@@ -8,13 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install MinGW Cross-Compiler & Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mingw-w64 nasm yasm git make pkg-config
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 nasm yasm git make pkg-config curl
 
-      - name: Clone FFmpeg (Shallow)
+      - name: Build libmp3lame (Static for Win64)
         run: |
-          git clone --depth 1 --branch n7.1 https://git.ffmpeg.org/ffmpeg.git ffmpeg
+          curl -L https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz -o lame.tar.gz
+          tar -xzf lame.tar.gz
+          cd lame-3.100
+          ./configure --host=x86_64-w64-mingw32 --prefix=/usr/x86_64-w64-mingw32 --disable-shared --enable-static --disable-frontend
+          make -j$(nproc)
+          sudo make install
+
+      - name: Clone FFmpeg
+        run: git clone --depth 1 --branch n7.1 https://git.ffmpeg.org/ffmpeg.git ffmpeg
 
       - name: Configure & Compile Minimal FFmpeg
         working-directory: ffmpeg
@@ -33,15 +39,17 @@ jobs:
             --disable-autodetect \
             --disable-everything \
             --enable-small \
+            --enable-libmp3lame \
             --enable-protocol=file,pipe \
             --enable-demuxer=mov,matroska,webm,aac,mp3,ogg,flac,wav,mpegts \
             --enable-muxer=mp4,matroska,webm,mp3,adts,ogg,flac,wav \
             --enable-decoder=aac,mp3,opus,vorbis,flac,pcm_s16le,h264,hevc,vp9,av1 \
-            --enable-encoder=aac,pcm_s16le \
+            --enable-encoder=aac,libmp3lame,pcm_s16le,flac \
             --enable-parser=aac,mpegaudio,opus,vorbis,h264,hevc,vp9,av1 \
             --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb \
             --enable-filter=aresample,anull,null,copy \
-            --extra-ldflags="-static"
+            --extra-cflags="-I/usr/x86_64-w64-mingw32/include" \
+            --extra-ldflags="-static -L/usr/x86_64-w64-mingw32/lib"
           make -j$(nproc)
           x86_64-w64-mingw32-strip ffmpeg.exe
 
