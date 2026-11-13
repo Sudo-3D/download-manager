@@ -5,14 +5,16 @@ import sys
 import threading
 import time
 import tkinter as tk
+import json
+import struct
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
-from analyze_engine import _update_url_information
-from download_engine import _core_download_engine
-from history_manager import update_download_data
-from settings_manager import load_settings, save_settings
-from shortcuts import handle_global_shortcuts
+from src.core.analyze_engine import _update_url_information
+from src.core.download_engine import _core_download_engine
+from src.managers.history_manager import update_download_data
+from src.managers.settings_manager import load_settings, save_settings
+from src.managers.shortcuts import handle_global_shortcuts
 
 # Set modern appearance mode and default color palette
 ctk.set_appearance_mode("Dark")
@@ -22,20 +24,59 @@ NO_CONSOLE_FLAG = (
     subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 )
 
-if getattr(sys, "frozen", False):
-  _base_dir = os.path.dirname(os.path.abspath(sys.executable))
-else:
-  _base_dir = os.path.dirname(os.path.abspath(__file__))
+def handle_browser_launch():
+  """قراءة الرابط من المتصفح مباشرة عند تشغيل main.exe كـ Native Messaging Host."""
+  if len(sys.argv) > 1 and sys.argv[1].startswith(("chrome-extension://", "moz-extension://")):
+    try:
+      raw_length = sys.stdin.buffer.read(4)
+      if not raw_length or len(raw_length) < 4:
+        sys.exit(0)
 
-FFMPEG_DIR = os.path.join(_base_dir, "ffmpeg")
+      msg_len = struct.unpack("I", raw_length)[0]
+      msg = json.loads(sys.stdin.buffer.read(msg_len).decode("utf-8"))
 
-if os.path.exists(FFMPEG_DIR) and FFMPEG_DIR not in os.environ["PATH"]:
-  os.environ["PATH"] = FFMPEG_DIR + os.pathsep + os.environ["PATH"]
+      url = str(msg.get("url", "")).strip()
+      if url.startswith("{") and "url" in url:
+        url = json.loads(url).get("url", url).strip()
+      if url.startswith("mydl://"):
+        url = url.replace("mydl://", "https://")
 
+      # إرسال رد فوري للمتصفح وإغلاق قناة stdin/stdout حتى لا ينتظر المتصفح إغلاق النافذة
+      reply = json.dumps({"status": "success", "message": "Launched main"}).encode("utf-8")
+      sys.stdout.buffer.write(struct.pack("I", len(reply)))
+      sys.stdout.buffer.write(reply)
+      sys.stdout.buffer.flush()
+      sys.stdout.close()
+      sys.stdin.close()
+
+      if not url:
+        sys.exit(0)
+
+      # توليد ID جديد بناءً على سجل التحميلات
+      appdata_dir = os.path.join(
+          os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "DM_Temp"
+      )
+      json_file = os.path.join(appdata_dir, "downloads_history.json")
+      max_id = 0
+      if os.path.exists(json_file):
+        with open(json_file, "r", encoding="utf-8") as f:
+          max_id = max((int(item.get("id", 0)) for item in (json.load(f) or [])), default=0)
+
+      return url, max_id + 1
+    except Exception:
+      sys.exit(0)
+
+  # التشغيل العادي من الواجهة الرئيسية (Download Manager.exe)
+  passed_url = sys.argv[1] if len(sys.argv) > 1 else ""
+  try:
+    passed_id = int(sys.argv[2]) if len(sys.argv) > 2 else None
+  except ValueError:
+    passed_id = None
+  return passed_url, passed_id
 
 class PythonAutoDownloadManagerGUI:
 
-  def __init__(self, root):
+  def __init__(self, root, initial_url="", initial_id=None):
     self.root = root
     self.root.title("Download")
     self.root.geometry("860x365")
@@ -66,12 +107,14 @@ class PythonAutoDownloadManagerGUI:
 
     if getattr(sys, "frozen", False):
       self.current_dir = os.path.dirname(os.path.abspath(sys.executable))
+      bundle_dir = getattr(sys, "_MEIPASS", self.current_dir)
     else:
       self.current_dir = os.path.dirname(os.path.abspath(__file__))
+      bundle_dir = self.current_dir
 
-    icon_path = os.path.join(self.current_dir, "icon", "icon.ico")
-    if os.path.exists(icon_path):
-      self.root.iconbitmap(icon_path)
+    self.icon_path = os.path.join(bundle_dir, "assets", "icon", "icon.ico")
+    if os.path.exists(self.icon_path):
+      self.root.iconbitmap(self.icon_path)
 
     self.lock = threading.Lock()
 
@@ -85,21 +128,11 @@ class PythonAutoDownloadManagerGUI:
     self.check_and_update_ytdlp()
     self.url_var.trace_add("write", self._on_url_change)
 
-    if len(sys.argv) > 1:
-      passed_url = sys.argv[1]
-      self.url_var.set(passed_url)
-      self.last_clipboard = passed_url
+    if initial_url:
+      self.url_var.set(initial_url)
+      self.last_clipboard = initial_url
 
-      if len(sys.argv) > 2:
-        try:
-          self.download_id = int(sys.argv[2])
-        except ValueError:
-          self.download_id = None
-      else:
-        self.download_id = None
-    else:
-      self.download_id = None
-
+    self.download_id = initial_id
     self.root.after(500, self._auto_capture_url)
 
   def check_and_update_ytdlp(self):
@@ -678,15 +711,17 @@ class PythonAutoDownloadManagerGUI:
 
 
 if __name__ == "__main__":
-  download_id = sys.argv[2] if len(sys.argv) > 2 else 1
+  target_url, download_id = handle_browser_launch()
 
   try:
     single_instance_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    unique_port = 65432 + int(download_id)
+    unique_port = 49152 + (int(download_id or 1) % 16383)
     single_instance_socket.bind(("127.0.0.1", unique_port))
   except (socket.error, ValueError):
     sys.exit(0)
 
   window = ctk.CTk()
-  app = PythonAutoDownloadManagerGUI(window)
+  app = PythonAutoDownloadManagerGUI(
+      window, initial_url=target_url, initial_id=download_id
+  )
   window.mainloop()

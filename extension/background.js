@@ -1,19 +1,14 @@
-let isInitialStartup = true;
 let nativePort = null;
 
-// Wait 8 seconds to bypass startup or restored downloads
-setTimeout(() => {
-    isInitialStartup = false;
-    console.log("Startup period over. Intercepted active user downloads.");
-}, 8000);
+// تسجيل وقت فتح المتصفح مرة واحدة فقط في الجلسة
+chrome.runtime.onStartup.addListener(() => {
+    chrome.storage.session.set({ startupTime: Date.now() });
+});
 
-// Helper function to get or create an active native port
 function getNativePort() {
-    if (nativePort) {
-        return nativePort;
-    }
+    if (nativePort) return nativePort;
 
-    console.log("Establishing a new stable connection with Python bridge...");
+    console.log("Connecting to native host...");
     nativePort = chrome.runtime.connectNative('com.python.download.manager');
 
     nativePort.onMessage.addListener((message) => {
@@ -21,54 +16,51 @@ function getNativePort() {
     });
 
     nativePort.onDisconnect.addListener(() => {
-        console.log("Python bridge disconnected cleanly.");
-        nativePort = null; // Reset port so it can be recreated on the next download
+        if (chrome.runtime.lastError) {
+            console.error("Native Host Error:", chrome.runtime.lastError.message);
+        }
+        nativePort = null;
     });
 
     return nativePort;
 }
 
-chrome.downloads.onCreated.addListener((downloadItem) => {
-    if (isInitialStartup) return;
+chrome.downloads.onCreated.addListener(async (downloadItem) => {
+    const { startupTime } = await chrome.storage.session.get("startupTime");
+    if (startupTime && (Date.now() - startupTime < 8000)) return;
+
+    const targetUrl = downloadItem.finalUrl || downloadItem.url;
+    if (!targetUrl || targetUrl.startsWith("blob:") || targetUrl.startsWith("data:")) return;
 
     const downloadStartTime = new Date(downloadItem.startTime).getTime();
-    const now = Date.now();
-    if (now - downloadStartTime > 3000) return;
+    if (Date.now() - downloadStartTime > 3000) return;
 
-    // إلغاء تحميل المتصفح فوراً وبدون تأخير لمنع التحميل المزدوج
+    // إلغاء تحميل المتصفح فوراً
     chrome.downloads.cancel(downloadItem.id, () => {
-        if (chrome.runtime.lastError) {
-            console.log("Download already handled or cancelled:", chrome.runtime.lastError.message);
-        }
-    });
-    
-    // إرسال الرابط للبايثون فوراً
-    sendToPython(downloadItem.url);
-    
-    // مسح التحميل من قائمة المتصفح لعدم تشويه المظهر
-    setTimeout(() => {
+        if (chrome.runtime.lastError) return;
         chrome.downloads.erase({ id: downloadItem.id });
-    }, 500);
+    });
+
+    sendUrlToDownloader(targetUrl);
 });
 
-function sendToPython(downloadUrl) {
-    try {
-        const port = getNativePort();
-        if (port) {
-            port.postMessage({ url: downloadUrl });
-            console.log("URL sent successfully to production bridge:", downloadUrl);
-        }
-    } catch (error) {
-        console.error("Critical communication error in production:", error);
-        nativePort = null; // Ensure fresh retry next time
+function sendUrlToDownloader(downloadUrl) {
+  chrome.runtime.sendNativeMessage(
+    "com.python.download.manager",
+    { url: downloadUrl },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn("Bridge notice:", chrome.runtime.lastError.message);
+        return;
+      }
+      console.log("Downloader response:", response);
     }
+  );
 }
 
-// مستمع لاستقبال الرابط من الزرار المحقون وتمريره للبايثون عبر الـ Native Messaging الحالي
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "download_video" && request.url) {
-        console.log("Sending URL to Python Bridge:", request.url);
-        sendToPython(request.url);
+        sendUrlToDownloader(request.url);
         sendResponse({ status: "success" });
     }
     return true;

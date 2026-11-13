@@ -3,9 +3,10 @@ import os
 import threading
 import requests
 import yt_dlp
+import customtkinter as ctk
 from concurrent.futures import ThreadPoolExecutor
-from history_manager import find_download_by_name, update_download_data, get_download_by_id
-from file_utils import _fetch_file_size
+from src.managers.history_manager import find_download_by_name, update_download_data, get_download_by_id
+from src.utils.file_utils import _fetch_file_size
 
 def _analyze_url(url, app_instance):
     app_instance._safe_ui_update(app_instance.btn_download, {"state": "disabled"})
@@ -141,7 +142,6 @@ def _update_url_information(url, app_instance):
                 threading.Thread(target=_deep_playlist_analyze, args=(app_instance, flat_entries), daemon=True).start()
 
             if not hasattr(app_instance, 'btn_analyze_playlist'):
-                import customtkinter as ctk
                 font_bold = ctk.CTkFont(family="Segoe UI", size=13, weight="bold")
                 app_instance.btn_analyze_playlist = ctk.CTkButton(
                     app_instance.root, 

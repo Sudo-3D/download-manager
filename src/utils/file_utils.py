@@ -7,7 +7,7 @@ import requests
 from email.message import Message
 from urllib.parse import unquote, urlparse
 
-from history_manager import find_download_by_name, update_download_data, show_data, add_download
+from src.managers.history_manager import find_download_by_name, update_download_data, show_data, add_download
 
 
 BROWSER_HEADERS = {

@@ -334,30 +334,48 @@ class AddUrlDialog(QDialog):
       self.url_entry.setText(text)
 
   def confirm(self):
-    full_url = self.url_entry.text().strip()
-    if not full_url:
-      QMessageBox.warning(self, "Warning", "URL field cannot be empty.")
-      return
+      full_url = self.url_entry.text().strip()
+      if not full_url:
+        QMessageBox.warning(self, "Warning", "URL field cannot be empty.")
+        return
 
-    main_exe_path = os.path.join(self.main_app.current_dir, "main.exe")
-    main_py = os.path.join(self.main_app.current_dir, "main.py")
 
-    try:
-      if os.path.exists(main_exe_path):
-        subprocess.Popen(
-            [main_exe_path, full_url],
-            creationflags=(
-                subprocess.DETACHED_PROCESS if sys.platform == "win32" else 0
-            ),
+      downloads = self.main_app.read_json_file() or []
+      max_json_id = max((int(item.get("id", 0)) for item in downloads), default=0)
+
+      last_id = max(max_json_id, getattr(self.main_app, "last_assigned_id", 0))
+      new_id = last_id + 1
+      self.main_app.last_assigned_id = new_id
+
+      main_exe_path = os.path.join(self.main_app.current_dir, "main.exe")
+      main_py = os.path.join(self.main_app.current_dir, "main.py")
+
+      try:
+        if sys.platform == "win32":
+          flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+        else:
+          flags = 0
+
+        if os.path.exists(main_exe_path):
+          subprocess.Popen(
+              [main_exe_path, full_url, str(new_id)],
+              creationflags=flags,
+          )
+        else:
+          executable = sys.executable
+          if executable.endswith("python.exe"):
+            executable = executable.replace("python.exe", "pythonw.exe")
+
+          subprocess.Popen(
+              [executable, main_py, full_url, str(new_id)],
+              creationflags=flags,
+          )
+      except Exception as e:
+        QMessageBox.critical(
+            self, "Error", f"Failed to start download process: {e}"
         )
-      else:
-        subprocess.Popen([sys.executable, main_py, full_url])
-    except Exception as e:
-      QMessageBox.critical(
-          self, "Error", f"Failed to start download process: {e}"
-      )
 
-    self.accept()
+      self.accept()
 
 
 class UpdateCheckerThread(QThread):
@@ -399,12 +417,16 @@ class IDMRealTimeViewer(QMainWindow):
 
     if getattr(sys, "frozen", False):
       self.current_dir = os.path.dirname(os.path.abspath(sys.executable))
+      bundle_dir = getattr(sys, "_MEIPASS", self.current_dir)
     else:
       self.current_dir = os.path.dirname(os.path.abspath(__file__))
+      bundle_dir = self.current_dir
 
-    icon_path = os.path.join(self.current_dir, "icon", "icon.ico")
-    if os.path.exists(icon_path):
-      self.setWindowIcon(QIcon(icon_path))
+    self.icon_path = os.path.join(bundle_dir, "assets", "icon", "icon.ico")
+    if os.path.exists(self.icon_path):
+      app_icon = QIcon(self.icon_path)
+      self.setWindowIcon(app_icon)
+      QApplication.instance().setWindowIcon(app_icon)
 
     appdata_dir = os.path.join(
         os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "DM_Temp"
@@ -420,7 +442,7 @@ class IDMRealTimeViewer(QMainWindow):
     self.settings_file = os.path.join(appdata_dir, "settings.json")
     self.load_settings()
 
-    self.CURRENT_VERSION = "1.0.4"
+    self.CURRENT_VERSION = "0.5"
     self.VERSION_URL = "https://raw.githubusercontent.com/Sudo-3D/download-manager/main/version.json"
     self.current_category = "All Downloads"
 
@@ -641,9 +663,8 @@ class IDMRealTimeViewer(QMainWindow):
     main_layout.addLayout(content_layout)
 
   def create_tray_icon(self):
-    icon_path = os.path.join(self.current_dir, "icon", "icon.ico")
-    if os.path.exists(icon_path):
-      image = Image.open(icon_path)
+    if os.path.exists(self.icon_path):
+      image = Image.open(self.icon_path)
     else:
       image = Image.new("RGB", (64, 64), color=(30, 144, 255))
       d = ImageDraw.Draw(image)
@@ -866,7 +887,7 @@ class IDMRealTimeViewer(QMainWindow):
       QMessageBox.critical(self, "Error", "Download data not found.")
       return
 
-    unique_port = 65432 + int(file_id)
+    unique_port = 49152 + (int(file_id) % 16383)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       s.bind(("127.0.0.1", unique_port))

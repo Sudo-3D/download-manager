@@ -1,12 +1,14 @@
 {
-  "name": "Python test",
+  "name": "Download Manager",
   "version": "1.0",
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx5H5Q+I/XuuFmhzwFIxaH92dncbX2zNmSwo82F/EfLhkrgPDHcxPzPwWkC70k0ulMNMFe/rD64HkwjkWugFYS/qlTB+cjJOIkm+/L7Tc+LW/5R8FF/66BsrcRaD8zPAtNsqBpLbsW8spVuBRMYQUmM37gVqZWSd6rGAja87j+2OEWbIx7ZrzaM6c+n/1+/vwY4Qa+UPsrtUl+rQc2iPO35SJ16aQ+FAcBCJoQVgaAMLRuYzDFlWBzaOAYhxfwnK/+DZMoakLlUGM729yzjkrDfvwOTqSZLf9fuqKy8kcQu4zrz8HnYRLn5xVtDitKkzmMIpK09CJhqW94WOFWXyDdwIDAQAB",
   "permissions": [
     "downloads",
     "downloads.open",
     "nativeMessaging",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "*://*/*"
