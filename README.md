@@ -46,18 +46,7 @@ If you just want to use MDM on your PC without setting up code or Python environ
    - Click the **Load unpacked** button.
    - Navigate to the installation path on your system drive (typically `C:\`).
    - Select the **`extension`** folder and click **Select Folder**.
+   - **Click Refresh**.
    - *The extension is now activated!* 🎉
 
 ---
-
-### ⚠️ Important Note (If Installed on a Non-C Drive)
-
-If you install or move the application to a partition other than `C:\` (such as `D:\` or `E:\`):
-
-1. After adding the extension to your browser, copy its **Extension ID** (the long string of random letters, e.g., `ehlmakpkikgbekcdaoonkflbidmfeaag`).
-2. Open the **`com.python.download.manager.json`** file located inside the program folder.
-3. Locate the `allowed_origins` field:
-   ```json
-   "allowed_origins": [
-     "chrome-extension://YOUR_COPIED_EXTENSION_ID/"
-   ]
